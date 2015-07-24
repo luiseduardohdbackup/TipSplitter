@@ -1,6 +1,8 @@
 ﻿using System;
 
 using Xamarin.Forms;
+using unirest_net.http;
+using System.Threading.Tasks;
 
 namespace TipSplitter
 {
@@ -9,6 +11,11 @@ namespace TipSplitter
 		public App ()
 		{
 			// The root page of your application
+
+			var indicator = new ActivityIndicator() {
+				HorizontalOptions = LayoutOptions.CenterAndExpand
+			};
+			indicator.IsVisible = false;
 			var numeroDePersonasEntry = 
 				new Entry {
 				Text = "5"
@@ -65,7 +72,9 @@ namespace TipSplitter
 			};
 			var totalDeLaComidaEntry = 
 				new Entry {
-				Text = "500"
+				Text = "500",
+
+				HorizontalOptions = LayoutOptions.FillAndExpand
 			};
 			var plus500Button = new Button{ Text = "+500" };
 			plus500Button.Clicked += delegate(object sender, EventArgs e){
@@ -166,6 +175,49 @@ namespace TipSplitter
 				{
 				}
 			};
+
+			var cambiarMonedaButton = new Button{ Text = "MXN" };
+
+			cambiarMonedaButton.Clicked += async delegate(object sender, EventArgs e){
+				try
+				{
+					float totalDeLaComida =  float.Parse( totalDeLaComidaEntry.Text ) ;
+
+					indicator.IsVisible = true;
+					indicator.IsRunning = true;
+					var from = "USD"; 
+					var to = "MXN"; 
+					if( cambiarMonedaButton.Text.Equals("MXN"))
+					{
+						from = "USD";
+						to = "MXN";
+					}
+					else
+					{
+						from = "MXN";
+						to = "USD";
+					}
+					HttpResponse<string> response = await Unirest.get("https://currency-exchange.p.mashape.com/exchange?from="+from+"&q="+totalDeLaComida+"&"+to+"=MXN")
+						.header("X-Mashape-Key", "xUnaD3PLmhmshJQmfF35NhFUZUOSp1vJXQtjsnrTrGSsoxOBad")
+						.header("Accept", "text/plain")
+						.asStringAsync();
+					indicator.IsRunning = false;
+					indicator.IsVisible = false;
+					totalDeLaComidaEntry.Text = response.Body;
+					if( cambiarMonedaButton.Text.Equals("MXN"))
+					{
+						cambiarMonedaButton.Text = "USD";
+					}
+					else
+					{
+						cambiarMonedaButton.Text = "MXN";
+					}
+					//MainPage.DisplayAlert ("Calculado", "Cambio:" +response.Body , "OK");
+				}
+				catch( Exception exception )
+				{
+				}
+			};
 			var porcentajeDePropinaEntry = 
 				new Entry {
 				Text = "10"
@@ -176,7 +228,7 @@ namespace TipSplitter
 			porcentajeDePropinaSlider.ValueChanged += delegate(object sender, ValueChangedEventArgs e) {
 				porcentajeDePropinaEntry.Text = "" + e.NewValue;
 			}; 
-			var button = new Button {
+			var CalcularPropinaButton = new Button {
 				Text = "Calcular propina",
 				FontSize = Device.GetNamedSize (NamedSize.Large, typeof(Label)),
 				FontAttributes = FontAttributes.Bold
@@ -219,7 +271,7 @@ namespace TipSplitter
 							numeroDePersonasEntry,
 							new Label {
 								XAlign = TextAlignment.Center,
-								Text = "Total de la comida",
+								Text = "Total de la comida ( $ )",
 								FontSize = Device.GetNamedSize (NamedSize.Large, typeof(Label)),
 								FontAttributes = FontAttributes.Bold
 							},
@@ -256,7 +308,14 @@ namespace TipSplitter
 									},
 								}
 							},
-							totalDeLaComidaEntry,
+							new StackLayout {
+								Orientation = StackOrientation.Horizontal,
+								Padding = 20,
+								Children ={
+									totalDeLaComidaEntry,
+									indicator,
+									cambiarMonedaButton}
+							},
 							new Label {
 								XAlign = TextAlignment.Center,
 								Text = "Porcentaje de propina ( % )",
@@ -265,14 +324,14 @@ namespace TipSplitter
 							},
 							porcentajeDePropinaSlider,
 							porcentajeDePropinaEntry,
-							button
+							CalcularPropinaButton
 						}
 					}
 				}
 			};
 
 
-			button.Clicked +=   delegate(object sender, EventArgs e) {
+			CalcularPropinaButton.Clicked +=   delegate(object sender, EventArgs e) {
 				try
 				{
 					int numeroDePersonas =  Int32.Parse( numeroDePersonasEntry.Text ) ;
@@ -283,7 +342,7 @@ namespace TipSplitter
 				}
 				catch(Exception exception)
 				{
-
+					MainPage.DisplayAlert ("Erro", "Favor de revisar los campos" , "OK");
 				}
 			};
 		}
